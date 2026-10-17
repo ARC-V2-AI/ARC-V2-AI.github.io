@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080c12">
+  <meta name="description" content="ARC V2 is building a local-first system for an optional always-on AI assistant, with clear boundaries between installation, supervision and execution.">
+  <title>ARC V2 — Building the systems around local AI</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --canvas: light-dark(#111925, #080c12);
+      --surface: light-dark(#151f2c, #0c121a);
+      --surface-raised: light-dark(#1a2635, #101823);
+      --surface-hover: light-dark(#213144, #172331);
+      --text: light-dark(#f5f8fd, #f5f8fd);
+      --muted: light-dark(#9baabd, #9baabd);
+      --faint: light-dark(#6d7e93, #6d7e93);
+      --border: light-dark(#2a394b, #243142);
+      --border-bright: light-dark(#3b5069, #35485f);
+      --blue: #9dc4ff;
+      --blue-bright: #73a8ff;
+      --cyan: #7ce4dc;
+      --amber: #f3b96f;
+      --green: #8fddb4;
+      --danger: #efaa94;
+      --shadow: 0 30px 100px rgba(0, 0, 0, .28);
+      --max-width: 1200px;
+      --page-pad: clamp(20px, 5vw, 72px);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 92px; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+    ::selection { background: rgba(115, 168, 255, .3); color: white; }
+
+    #app {
+      position: relative;
+      min-height: 100vh;
+      width: 100%;
+      overflow: clip;
+      border-radius: 0;
+      background-color: var(--canvas);
+      isolation: isolate;
+    }
+    #app::before {
+      position: absolute;
+      z-index: -1;
+      inset: 0 0 auto;
+      height: 900px;
+      content: "";
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 77% 13%, rgba(67, 117, 183, .15), transparent 37%),
+        radial-gradient(ellipse at 18% 3%, rgba(44, 94, 130, .09), transparent 34%);
+    }
+    .wrap { width: min(var(--max-width), calc(100% - var(--page-pad) * 2)); margin-inline: auto; }
+    .mono, .eyebrow, .micro, .status, .node-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--blue);
+      font-size: 11px;
+      line-height: 1.5;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 22px; height: 1px; background: currentColor; opacity: .8; }
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+    .section { padding-block: clamp(76px, 10vw, 132px); position: relative; }
+    .section-top { display: flex; align-items: end; justify-content: space-between; gap: 36px; margin-bottom: 42px; }
+    .section-top h2 { margin: 12px 0 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.13; letter-spacing: -.045em; font-weight: 570; max-width: 720px; }
+    .section-top p { max-width: 390px; margin: 0; color: var(--muted); font-size: 14px; }
+
+    /* Header */
+    .site-header {
+      position: sticky;
+      z-index: 50;
+      top: 0;
+      border-bottom: 1px solid rgba(69, 88, 111, .35);
+      background: rgba(8, 12, 18, .82);
+      backdrop-filter: blur(18px);
+    }
+    .nav { display: flex; min-height: 76px; align-items: center; justify-content: space-between; gap: 28px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(157, 196, 255, .48);
+      border-radius: 10px;
+      color: var(--blue);
+      background: linear-gradient(145deg, rgba(115, 168, 255, .18), rgba(124, 228, 220, .04));
+      box-shadow: inset 0 1px rgba(255,255,255,.06), 0 0 22px rgba(115,168,255,.08);
+    }
+    .brand-mark svg { width: 23px; height: 23px; }
+    .brand-name { font-weight: 650; letter-spacing: -.035em; font-size: 15px; }
+    .brand-name span { color: var(--muted); font-weight: 450; margin-left: 4px; }
+    .nav-links { display: flex; align-items: center; gap: clamp(18px, 2.6vw, 34px); margin-left: auto; }
+    .nav-links a { font-size: 12px; color: #a9b5c5; transition: color .2s ease; }
+    .nav-links a:hover { color: white; }
+    .nav-github { display: inline-flex; align-items: center; gap: 8px; padding: 10px 13px; border-radius: 8px; border: 1px solid #35465a; font-size: 12px; font-weight: 560; transition: border-color .2s, background .2s; }
+    .nav-github:hover { border-color: #6e91be; background: #111b28; }
+    .nav-github svg { width: 15px; height: 15px; }
+    .menu-toggle { display: none; border: 1px solid var(--border); color: var(--text); background: var(--surface); border-radius: 8px; width: 40px; height: 40px; cursor: pointer; }
+
+    /* Hero */
+    .hero { padding-top: clamp(64px, 9vw, 112px); padding-bottom: clamp(76px, 9vw, 116px); }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; align-items: center; }
+    .hero-copy { position: relative; z-index: 2; max-width: 880px; }
+    .hero-status { display: inline-flex; align-items: center; gap: 9px; border: 1px solid rgba(143, 221, 180, .23); padding: 6px 10px; border-radius: 999px; background: rgba(143, 221, 180, .05); color: #b5e8ca; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+    .status-dot { width: 6px; height: 6px; border-radius: 100%; background: var(--green); box-shadow: 0 0 0 4px rgba(143,221,180,.1); animation: statusPulse 3s ease-in-out infinite; }
+    .hero h1 { margin: 25px 0 22px; max-width: 680px; font-size: clamp(45px, 5.7vw, 76px); line-height: .99; letter-spacing: -.065em; font-weight: 590; }
+    .hero h1 .accent { color: var(--blue); }
+    .hero-lede { max-width: 545px; color: #abb7c7; font-size: clamp(15px, 1.5vw, 17px); line-height: 1.8; margin: 0; }
+    .hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
+    .button { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 47px; padding: 0 17px; border-radius: 8px; font-size: 12px; font-weight: 620; transition: transform .22s, background .22s, border-color .22s, box-shadow .22s; cursor: pointer; }
+    .button svg { width: 15px; height: 15px; }
+    .button:hover { transform: translateY(-2px); }
+    .button-primary { color: #0b1220; background: #c7dcff; border: 1px solid #d9e7ff; box-shadow: 0 8px 28px rgba(115,168,255,.12); }
+    .button-primary:hover { background: white; box-shadow: 0 10px 34px rgba(115,168,255,.2); }
+    .button-secondary { color: #dce5f2; border: 1px solid #344356; background: rgba(16,24,35,.7); }
+    .button-secondary:hover { border-color: #607d9e; background: #141f2e; }
+    .hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 32px; color: #75859a; font-size: 11px; }
+    .hero-meta span { display: inline-flex; align-items: center; gap: 7px; }
+    .hero-meta svg { width: 13px; height: 13px; color: #8ba8ce; }
+
+    /* Topology visual */
+    .topology-shell { position: relative; min-width: 0; animation: driftIn 1s cubic-bezier(.2,.8,.2,1) both; }
+    .topology-shell::before { position: absolute; inset: 9% 2% -2%; content: ""; border-radius: 50%; background: rgba(66, 126, 206, .12); filter: blur(60px); z-index: -1; }
+    .topology { position: relative; border: 1px solid #273748; border-radius: 16px; overflow: hidden; background: linear-gradient(145deg, rgba(20,30,43,.97), rgba(10,15,22,.99)); box-shadow: var(--shadow), inset 0 1px rgba(255,255,255,.035); }
+    .topology::before { content: ""; position: absolute; inset: 0; opacity: .22; pointer-events: none; background-image: linear-gradient(rgba(115,151,194,.11) 1px, transparent 1px), linear-gradient(90deg, rgba(115,151,194,.11) 1px, transparent 1px); background-size: 28px 28px; mask-image: linear-gradient(to bottom, black, transparent 95%); }
+    .topology-head { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 15px 17px; border-bottom: 1px solid rgba(55,73,95,.6); }
+    .topology-head .label { color: #d7e2f1; font-size: 11px; font-weight: 600; }
+    .topology-head .mode { color: #71849a; font-size: 9px; text-transform: uppercase; letter-spacing: .12em; display: flex; align-items: center; gap: 8px; }
+    .live-bars { display: flex; align-items: end; gap: 2px; height: 12px; }
+    .live-bars i { display: block; width: 2px; border-radius: 2px; height: 45%; background: var(--cyan); animation: bars 1s ease-in-out infinite alternate; }
+    .live-bars i:nth-child(2) { height: 88%; animation-delay: -.5s; }
+    .live-bars i:nth-child(3) { height: 60%; animation-delay: -.8s; }
+    .live-bars i:nth-child(4) { height: 75%; animation-delay: -.25s; }
+    .topology-map { position: relative; min-height: 390px; padding: 24px 21px 20px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 63px 36px 70px 36px 69px 36px 68px; justify-items: stretch; align-items: stretch; }
+    .mini-node { position: relative; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #304258; border-radius: 9px; background: rgba(17,26,38,.94); box-shadow: 0 8px 24px rgba(0,0,0,.13); transition: border-color .25s, transform .25s, background .25s; }
+    .mini-node:hover { transform: translateY(-2px); border-color: #6489b8; background: #152335; }
+    .mini-node.core { grid-column: 1 / 3; grid-row: 1; justify-self: center; width: min(240px, 85%); border-color: #4b6d96; background: linear-gradient(120deg, rgba(40,65,98,.68), rgba(18,29,43,.95)); }
+    .mini-node.pulse { grid-column: 1; grid-row: 3; }
+    .mini-node.forge { grid-column: 2; grid-row: 3; }
+    .mini-node.runner { grid-column: 1 / 3; grid-row: 5; justify-self: center; width: min(280px, 92%); }
+    .mini-node.services { grid-column: 1; grid-row: 7; }
+    .mini-node.inference { grid-column: 2; grid-row: 7; border-color: #365a64; background: rgba(15,37,42,.85); }
+    .node-symbol { flex: 0 0 29px; width: 29px; height: 29px; display: grid; place-items: center; border-radius: 7px; border: 1px solid #405a79; color: var(--blue); background: rgba(91,134,191,.11); }
+    .node-symbol svg { width: 16px; height: 16px; }
+    .inference .node-symbol { color: var(--cyan); border-color: #37646a; background: rgba(124,228,220,.06); }
+    .node-copy { display: flex; flex-direction: column; min-width: 0; }
+    .node-copy strong { font-size: 11px; font-weight: 620; line-height: 1.45; letter-spacing: -.01em; }
+    .node-copy small { font-size: 9px; color: #8595a9; line-height: 1.45; }
+    .mini-node.core .node-copy strong { font-size: 12px; }
+    .edge-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .edge-layer path { fill: none; stroke: #41638a; stroke-width: 1.1; stroke-dasharray: 3 5; opacity: .85; vector-effect: non-scaling-stroke; animation: dashFlow 16s linear infinite; }
+    .edge-layer path.cyan-path { stroke: #438f91; animation-duration: 20s; }
+    .edge-layer circle { fill: #a5c7ff; filter: drop-shadow(0 0 4px rgba(115,168,255,.8)); }
+    .edge-layer circle.cyan-dot { fill: #86e8dd; filter: drop-shadow(0 0 4px rgba(124,228,220,.7)); }
+    .topology-foot { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 17px; border-top: 1px solid rgba(55,73,95,.6); color: #76869a; font-size: 9px; }
+    .legend { display: flex; align-items: center; gap: 13px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend b { display: inline-block; width: 6px; height: 6px; border-radius: 100%; background: var(--blue); }
+    .legend .legend-cyan { background: var(--cyan); }
+    .topology-foot .not-live { letter-spacing: .04em; }
+
+    /* Credo line */
+    .credo-line { border-block: 1px solid var(--border); background: rgba(15,22,32,.55); }
+    .credo-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .credo-item { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 15px 22px; border-right: 1px solid var(--border); }
+    .credo-item:first-child { padding-left: 0; }
+    .credo-item:last-child { border-right: 0; }
+    .credo-item svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--blue); }
+    .credo-item span { font-size: 11px; color: #c1ccda; white-space: nowrap; }
+
+    /* Why ARC */
+    .intro-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(35px, 8vw, 110px); align-items: start; }
+    .intro-title { margin: 15px 0 0; font-size: clamp(32px, 4.3vw, 49px); letter-spacing: -.05em; line-height: 1.12; font-weight: 560; }
+    .intro-copy { color: var(--muted); font-size: 15px; line-height: 1.85; }
+    .intro-copy p { margin: 0 0 17px; }
+    .vision-section { border-block: 1px solid var(--border); background: linear-gradient(180deg, rgba(14,21,31,.76), rgba(12,18,26,.96)); }
+    .vision-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(24px, 5vw, 64px); align-items: stretch; }
+    .vision-statement { padding: clamp(24px, 4vw, 40px); border: 1px solid var(--border-bright); border-radius: 13px; background: radial-gradient(ellipse at 100% 0, rgba(72,119,177,.12), transparent 48%), rgba(8,13,20,.55); }
+    .vision-statement h3 { margin: 15px 0 12px; max-width: 520px; font-size: clamp(25px, 3vw, 34px); line-height: 1.15; letter-spacing: -.045em; font-weight: 570; }
+    .vision-statement p { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.85; }
+    .vision-statement p:last-child { margin-bottom: 0; }
+    .vision-points { display: grid; grid-template-columns: 1fr; gap: 11px; }
+    .vision-point { display: flex; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: rgba(16,24,35,.56); }
+    .vision-point-index { flex: 0 0 auto; color: var(--blue); font: 10px/1.8 ui-monospace, monospace; }
+    .vision-point h3 { margin: 0 0 4px; font-size: 13px; font-weight: 620; }
+    .vision-point p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.75; }
+    .planned-heading { margin-top: 58px; margin-bottom: 20px; display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+    .planned-heading h3 { margin: 0; font-size: clamp(22px, 3vw, 29px); letter-spacing: -.04em; font-weight: 570; }
+    .planned-heading p { max-width: 390px; margin: 0; color: var(--muted); font-size: 12px; }
+    .planned-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .planned-card { min-height: 208px; }
+    .planned-card h3 { margin-top: 20px; }
+    .planned-pill { color: #f0c995; border-color: #5b4935; background: rgba(190,137,69,.08); }
+    .safety-note { margin-top: 22px; padding: 12px 15px; border-left: 2px solid var(--amber); background: rgba(190,137,69,.045); color: #a7b5c6; font-size: 11px; line-height: 1.8; }
+    .install-note { margin: 0 12px 13px; padding: 11px 12px; border: 1px solid #51442f; border-radius: 7px; background: rgba(190,137,69,.055); color: #c0b19a; font-size: 10px; line-height: 1.75; }
+    .install-note strong { color: #f0cc97; font-weight: 650; }
+    .inline-link { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; color: var(--blue); font-size: 12px; font-weight: 600; }
+    .inline-link svg { width: 14px; height: 14px; transition: transform .2s; }
+    .inline-link:hover svg { transform: translateX(3px); }
+
+    /* Architecture section */
+    .architecture-section { border-block: 1px solid var(--border); background: linear-gradient(180deg, rgba(14,21,31,.76), rgba(12,18,26,.96)); }
+    .architecture-card { border: 1px solid var(--border-bright); border-radius: 15px; background: rgba(8,13,20,.68); overflow: hidden; box-shadow: 0 22px 70px rgba(0,0,0,.16); }
+    .architecture-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+    .toolbar-left { display: flex; align-items: center; gap: 10px; color: #d9e4f2; font-size: 11px; font-weight: 600; }
+    .toolbar-mark { width: 8px; height: 8px; border: 1px solid var(--blue); border-radius: 2px; transform: rotate(45deg); }
+    .toolbar-note { font-size: 10px; color: #75869b; }
+    .arch-content { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(235px, .7fr); min-height: 480px; }
+    .arch-canvas { min-width: 0; position: relative; padding: 14px 14px 18px; border-right: 1px solid var(--border); }
+    .arch-svg { display: block; width: 100%; height: auto; min-height: 420px; max-height: 520px; }
+    .arch-svg .arch-edge { fill: none; stroke: #314761; stroke-width: 1.5; stroke-dasharray: 4 6; animation: dashFlow 22s linear infinite; transition: stroke .3s, opacity .3s; }
+    .arch-svg .arch-edge.active { stroke: #84b6ff; stroke-width: 2; opacity: 1; }
+    .arch-svg .arch-edge.teal { stroke: #397c7d; }
+    .arch-svg .arch-node { cursor: pointer; outline: none; }
+    .arch-svg .arch-node rect { fill: #101a27; stroke: #35475e; stroke-width: 1.25; transition: fill .25s, stroke .25s, filter .25s; }
+    .arch-svg .arch-node:hover rect, .arch-svg .arch-node.selected rect { fill: #182a3e; stroke: #81b4f9; filter: drop-shadow(0 0 9px rgba(115,168,255,.12)); }
+    .arch-svg .arch-node.selected rect { stroke-width: 1.8; }
+    .arch-svg .arch-node.teal-node rect { fill: #102329; stroke: #36636a; }
+    .arch-svg .arch-node.teal-node:hover rect, .arch-svg .arch-node.teal-node.selected rect { fill: #143037; stroke: #82dfd7; }
+    .arch-svg .node-title { fill: #e1eaf5; font-size: 12px; font-weight: 620; pointer-events: none; }
+    .arch-svg .node-subtitle { fill: #8698ad; font-size: 9px; pointer-events: none; }
+    .arch-svg .node-index { fill: #80abdf; font-family: ui-monospace, monospace; font-size: 8px; letter-spacing: .08em; pointer-events: none; }
+    .arch-svg .teal-node .node-index { fill: #8adbd5; }
+    .arch-svg .node-indicator { fill: #8fddb4; pointer-events: none; }
+    .mobile-architecture { display: none; }
+    .arch-detail { padding: 26px 23px; display: flex; flex-direction: column; }
+    .detail-index { color: var(--blue); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; }
+    .arch-detail h3 { font-size: 25px; letter-spacing: -.045em; line-height: 1.16; font-weight: 580; margin: 17px 0 10px; }
+    .arch-detail p { color: var(--muted); font-size: 13px; line-height: 1.8; margin: 0 0 22px; }
+    .detail-rule { height: 1px; background: var(--border); margin: 0 0 20px; }
+    .detail-meta { color: #76889e; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 9px; }
+    .detail-contract { padding: 12px 13px; border: 1px solid #293a4c; border-radius: 8px; background: rgba(18,28,40,.75); color: #c5d3e4; font-size: 11px; line-height: 1.65; }
+    .detail-foot { margin-top: auto; padding-top: 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #74869a; font-size: 10px; }
+    .detail-foot .selected-state { display: flex; gap: 7px; align-items: center; }
+    .selected-state i { width: 6px; height: 6px; display: block; border-radius: 50%; background: var(--cyan); }
+    .arch-caption { display: flex; gap: 9px; align-items: start; color: #74869b; font-size: 10px; padding: 14px 18px; border-top: 1px solid var(--border); }
+    .arch-caption svg { width: 14px; height: 14px; flex: 0 0 auto; margin-top: 1px; }
+
+    /* Layers */
+    .layer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .layer-card { position: relative; display: flex; flex-direction: column; align-items: flex-start; min-height: 240px; padding: 23px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: linear-gradient(145deg, rgba(21,32,46,.8), rgba(12,18,26,.94)); transition: border-color .25s, transform .25s, background .25s; }
+    .layer-card::after { content: ""; position: absolute; width: 125px; height: 125px; top: -55px; right: -44px; border: 1px solid rgba(115,168,255,.1); border-radius: 50%; box-shadow: 0 0 0 16px rgba(115,168,255,.025), 0 0 0 34px rgba(115,168,255,.02); transition: transform .5s; }
+    .layer-card:hover { border-color: #4b6583; transform: translateY(-4px); background: linear-gradient(145deg, rgba(26,41,59,.92), rgba(12,18,26,.96)); }
+    .layer-card:hover::after { transform: scale(1.15); }
+    .layer-icon { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid #405a79; border-radius: 9px; color: var(--blue); background: rgba(115,168,255,.08); }
+    .layer-icon svg { width: 19px; height: 19px; }
+    .layer-card h3 { margin: 24px 0 7px; font-size: 16px; font-weight: 620; letter-spacing: -.025em; }
+    .layer-card p { margin: 0; max-width: 310px; font-size: 12px; color: var(--muted); line-height: 1.75; }
+    .layer-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: auto; padding-top: 23px; color: #75879d; font-size: 10px; }
+    .layer-footer svg { width: 14px; height: 14px; }
+    .layer-card.inference-card .layer-icon { color: var(--cyan); border-color: #37646a; background: rgba(124,228,220,.055); }
+    .layer-card.inference-card::after { border-color: rgba(124,228,220,.11); box-shadow: 0 0 0 16px rgba(124,228,220,.02), 0 0 0 34px rgba(124,228,220,.015); }
+    .pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #2e5e58; color: #9bdfcc; background: rgba(87,177,151,.07); padding: 4px 7px; font-size: 9px; border-radius: 999px; letter-spacing: .04em; }
+    .pill.muted-pill { color: #a0afc0; border-color: #35465a; background: rgba(113,135,161,.07); }
+
+    /* Principles */
+    .principles { border-block: 1px solid var(--border); background: rgba(13,20,29,.55); }
+    .principle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+    .principle { padding: 7px 25px 7px 0; margin-right: 25px; border-right: 1px solid var(--border); }
+    .principle:last-child { border: 0; margin-right: 0; padding-right: 0; }
+    .principle-num { color: #6985a5; font-size: 10px; letter-spacing: .1em; }
+    .principle h3 { margin: 18px 0 7px; font-size: 15px; font-weight: 620; letter-spacing: -.025em; }
+    .principle p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.75; }
+
+    /* Developer CTA */
+    .start-panel { position: relative; overflow: hidden; border: 1px solid #354a62; border-radius: 15px; padding: clamp(28px, 5.5vw, 64px); background: radial-gradient(ellipse at 100% 0, rgba(72,119,177,.17), transparent 45%), linear-gradient(135deg, #111d2b, #0c121a 80%); box-shadow: var(--shadow); }
+    .start-panel::after { content: ""; position: absolute; width: 360px; height: 360px; border: 1px solid rgba(143,178,223,.11); border-radius: 50%; right: -170px; bottom: -245px; box-shadow: 0 0 0 30px rgba(115,168,255,.025), 0 0 0 65px rgba(115,168,255,.02), 0 0 0 105px rgba(115,168,255,.015); pointer-events: none; }
+    .start-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr minmax(290px, .72fr); gap: 45px; align-items: center; }
+    .start-panel h2 { font-size: clamp(30px, 4vw, 44px); line-height: 1.12; letter-spacing: -.05em; font-weight: 570; max-width: 550px; margin: 17px 0 14px; }
+    .start-panel p { max-width: 500px; color: #a4b3c5; margin: 0; font-size: 13px; line-height: 1.8; }
+    .code-card { border: 1px solid #34475d; background: rgba(5,10,16,.6); border-radius: 10px; overflow: hidden; }
+    .code-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #263648; padding: 10px 13px; color: #7e90a6; font-size: 9px; }
+    .code-top span:first-child { display: flex; align-items: center; gap: 7px; }
+    .code-dots { display: flex; gap: 4px; }
+    .code-dots i { display: block; width: 5px; height: 5px; background: #495a6f; border-radius: 50%; }
+    .code-body { padding: 17px 14px 18px; font: 11px/1.9 ui-monospace, SFMono-Regular, Menlo, monospace; color: #d9e5f3; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .code-body .comment { color: #6e8299; }
+    .code-body .cmd { color: #a7ceff; }
+    .copy-command { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #304359; border-radius: 6px; padding: 6px 8px; color: #b4c6dc; background: #121e2b; font-size: 9px; cursor: pointer; transition: border-color .2s, color .2s; }
+    .copy-command:hover { border-color: #6d8eaf; color: white; }
+    .copy-command svg { width: 12px; height: 12px; }
+    .start-footnote { position: relative; z-index: 1; margin-top: 24px; border-top: 1px solid rgba(75,98,124,.4); padding-top: 14px; color: #74859a; font-size: 10px; }
+
+    /* Footer */
+    .site-footer { border-top: 1px solid var(--border); background: rgba(8,12,18,.8); }
+    .footer-main { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 29px; }
+    .footer-brand { display: flex; flex-direction: column; gap: 4px; }
+    .footer-brand strong { font-size: 13px; font-weight: 630; }
+    .footer-brand span { color: #74859a; font-size: 10px; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 19px; color: #8b9bb0; font-size: 11px; }
+    .footer-links a:hover { color: #e8f1fe; }
+    .footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-top: 1px solid rgba(49,65,84,.56); padding-block: 14px; color: #64768b; font-size: 9px; }
+    .dev-warning { display: flex; align-items: center; gap: 7px; }
+    .dev-warning::before { content: ""; display: block; width: 5px; height: 5px; border-radius: 50%; background: var(--amber); }
+
+    /* Reveal and motion */
+    .reveal { opacity: 0; transform: translateY(19px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.75,.2,1); }
+    .reveal.in-view { opacity: 1; transform: translateY(0); }
+    .reveal.delay-1 { transition-delay: .08s; }
+    .reveal.delay-2 { transition-delay: .16s; }
+    .reveal.delay-3 { transition-delay: .24s; }
+    @keyframes dashFlow { to { stroke-dashoffset: -120; } }
+    @keyframes statusPulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(143,221,180,.1); opacity: 1; } 50% { box-shadow: 0 0 0 7px rgba(143,221,180,0); opacity: .75; } }
+    @keyframes bars { to { transform: scaleY(.4); opacity: .45; transform-origin: bottom; } }
+    @keyframes driftIn { from { opacity: 0; transform: translateY(15px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes halo { 0%, 100% { opacity: .22; } 50% { opacity: .7; } }
+
+    @media (max-width: 980px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 0; }
+      .hero-copy { max-width: 750px; }
+      .topology-shell { max-width: 690px; width: 100%; margin-inline: auto; }
+      .credo-grid { grid-template-columns: repeat(2, 1fr); }
+      .credo-item { border-bottom: 1px solid var(--border); }
+      .credo-item:nth-child(2) { border-right: 0; }
+      .credo-item:nth-child(3), .credo-item:nth-child(4) { border-bottom: 0; }
+      .credo-item:nth-child(3) { padding-left: 0; }
+      .intro-grid { gap: 45px; }
+      .arch-content { grid-template-columns: minmax(0, 1.15fr) minmax(215px, .85fr); }
+      .arch-canvas { padding-inline: 4px; }
+      .principle { margin-right: 17px; padding-right: 17px; }
+      .planned-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .nav { min-height: 68px; }
+      .menu-toggle { display: grid; place-items: center; }
+      .nav-links { display: none; position: absolute; top: 68px; left: 0; right: 0; padding: 12px var(--page-pad) 18px; border-bottom: 1px solid var(--border); background: rgba(8,12,18,.97); backdrop-filter: blur(18px); flex-direction: column; align-items: stretch; gap: 0; }
+      .nav-links.open { display: flex; }
+      .nav-links a { padding: 13px 0; border-bottom: 1px solid rgba(47,63,81,.5); }
+      .nav-links a:last-child { border-bottom: 0; }
+      .nav-github { display: none; }
+      .hero { padding-top: 61px; }
+      .hero h1 { font-size: clamp(45px, 12vw, 68px); }
+      .hero-grid { gap: 39px; }
+      .section-top { align-items: start; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+      .section-top p { max-width: 520px; }
+      .credo-item { min-height: 63px; padding: 12px 12px; }
+      .credo-item:first-child, .credo-item:nth-child(3) { padding-left: 0; }
+      .credo-item span { white-space: normal; font-size: 10px; }
+      .intro-grid { grid-template-columns: 1fr; gap: 22px; }
+      .intro-title { max-width: 550px; }
+      .vision-grid { grid-template-columns: 1fr; }
+      .planned-heading { align-items: start; flex-direction: column; gap: 8px; margin-top: 42px; }
+      .arch-content { grid-template-columns: 1fr; }
+      .arch-canvas { border-right: 0; border-bottom: 1px solid var(--border); }
+      .arch-svg { display: none; }
+      .mobile-architecture { display: grid; grid-template-columns: 1fr; gap: 9px; padding: 12px 10px; }
+      .mobile-arch-node { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 13px; border: 1px solid #34475e; border-radius: 9px; background: #101a27; color: var(--text); cursor: pointer; transition: border-color .2s, background .2s; }
+      .mobile-arch-node::before { content: ""; width: 7px; height: 7px; flex: 0 0 auto; background: #729ed8; border-radius: 2px; transform: rotate(45deg); }
+      .mobile-arch-node.selected { border-color: #81b4f9; background: #182a3e; }
+      .mobile-arch-node.teal-mobile::before { background: var(--cyan); }
+      .mobile-arch-node strong { display: block; font-size: 12px; }
+      .mobile-arch-node small { display: block; color: #8193a9; font-size: 10px; }
+      .mobile-arrow { text-align: center; color: #536e8e; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1; }
+      .arch-detail { padding: 23px 20px; min-height: 280px; }
+      .layer-grid { grid-template-columns: 1fr 1fr; }
+      .layer-card { min-height: 220px; padding: 18px; }
+      .layer-card h3 { margin-top: 18px; }
+      .principle-grid { grid-template-columns: 1fr 1fr; row-gap: 27px; }
+      .principle:nth-child(2) { border: 0; margin-right: 0; padding-right: 0; }
+      .principle:nth-child(3) { border-right: 1px solid var(--border); }
+      .start-grid { grid-template-columns: 1fr; gap: 30px; }
+      .footer-main { align-items: start; flex-direction: column; }
+      .footer-bottom { align-items: start; flex-direction: column; }
+    }
+    @media (max-width: 440px) {
+      :root { --page-pad: 19px; }
+      .hero-meta { gap: 11px 15px; }
+      .topology-map { padding-inline: 11px; min-height: 362px; grid-template-rows: 61px 28px 67px 28px 66px 28px 64px; }
+      .mini-node { padding: 8px; gap: 7px; }
+      .node-symbol { flex-basis: 25px; width: 25px; height: 25px; }
+      .node-symbol svg { width: 14px; height: 14px; }
+      .node-copy strong { font-size: 10px; }
+      .node-copy small { font-size: 8px; }
+      .topology-foot { align-items: start; flex-direction: column; gap: 7px; }
+      .credo-item svg { width: 15px; height: 15px; }
+      .credo-item { gap: 8px; }
+      .layer-grid { grid-template-columns: 1fr; }
+      .planned-grid { grid-template-columns: 1fr; }
+      .layer-card { min-height: 195px; }
+      .principle { padding-right: 14px; margin-right: 14px; }
+      .principle h3 { font-size: 14px; }
+      .principle p { font-size: 11px; }
+      .section { padding-block: 72px; }
+      .architecture-toolbar { align-items: start; flex-direction: column; gap: 5px; }
+      .footer-links { gap: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="site-header">
+      <div class="wrap nav">
+        <a class="brand" href="#top" aria-label="ARC V2 home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 28 28" fill="none">
+              <path d="M5 20.5 11.1 7.6c.8-1.7 3.1-1.7 3.9 0l7.9 13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M9.2 17.2h10.1" stroke="#7ce4dc" stroke-width="1.7" stroke-linecap="round"/>
+              <path d="M17.9 17.2h3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="brand-name">ARC <span>V2</span></span>
+        </a>
+        <nav class="nav-links" id="primary-nav" aria-label="Primary navigation">
+          <a href="#vision">Vision</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#components">Components</a>
+          <a href="#principles">Principles</a>
+          <a href="#get-started">Get started</a>
+        </nav>
+        <a class="nav-github" href="https://github.com/ARC-V2-AI" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.55.1.76-.24.76-.54v-2.08c-3.1.67-3.76-1.32-3.76-1.32-.5-1.29-1.24-1.63-1.24-1.63-1.01-.7.08-.69.08-.69 1.12.08 1.7 1.15 1.7 1.15.99 1.69 2.59 1.2 3.22.92.1-.72.39-1.2.7-1.47-2.48-.28-5.09-1.24-5.09-5.53 0-1.22.44-2.22 1.15-3-.12-.28-.5-1.42.11-2.95 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.12-1.44 3.05-1.14 3.05-1.14.61 1.53.23 2.67.11 2.95.72.78 1.15 1.78 1.15 3 0 4.3-2.61 5.24-5.1 5.52.4.35.75 1.03.75 2.08v3.08c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z"/></svg>
+          View GitHub <span aria-hidden="true">↗</span>
+        </a>
+        <button class="menu-toggle" id="menu-toggle" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-nav">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <div class="hero-status"><span class="status-dot"></span> System architecture · Active development</div>
+            <div class="eyebrow" style="margin-top:26px">Local-first · Service-oriented · Linux-native</div>
+            <h1>Building the systems around <span class="accent">local AI.</span></h1>
+            <p class="hero-lede">ARC V2 is building the foundation for persistent local AI environments — where components can be installed independently, services are supervised deliberately, and capabilities connect through explicit interfaces.</p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#architecture">Explore the architecture <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg></a>
+              <a class="button button-secondary" href="https://github.com/ARC-V2-AI" target="_blank" rel="noreferrer">Explore on GitHub <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M14 4h6v6M20 4 10 14"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg></a>
+            </div>
+            <div class="hero-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg> Runs toward local control</span>
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/><path d="M10 7h4a2 2 0 0 1 2 2v5"/></svg> Composable by design</span>
+            </div>
+          </div>
+
+          <!-- Redundant hero topology removed; the interactive component map below is the single architecture diagram.
+            <div class="topology">
+              <div class="topology-head">
+                <span class="label">ARC V2 / System topology</span>
+                <span class="mode"><span class="live-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span> Architectural view</span>
+              </div>
+              <div class="topology-map">
+                <svg class="edge-layer" viewBox="0 0 600 390" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M300 62 C300 80 152 68 152 104"/>
+                  <path d="M300 62 C300 80 448 68 448 104"/>
+                  <path d="M152 159 C152 180 300 170 300 208"/>
+                  <path d="M448 159 C448 181 300 170 300 208"/>
+                  <path d="M300 269 C300 290 152 283 152 323"/>
+                  <path class="cyan-path" d="M300 269 C300 290 448 283 448 323"/>
+                  <circle r="2.4"><animateMotion dur="5.8s" repeatCount="indefinite" path="M300 62 C300 80 152 68 152 104"/></circle>
+                  <circle r="2.4"><animateMotion dur="6.7s" repeatCount="indefinite" path="M300 62 C300 80 448 68 448 104"/></circle>
+                  <circle r="2.4"><animateMotion dur="5.4s" repeatCount="indefinite" path="M152 159 C152 180 300 170 300 208"/></circle>
+                  <circle class="cyan-dot" r="2.4"><animateMotion dur="6.1s" repeatCount="indefinite" path="M300 269 C300 290 448 283 448 323"/></circle>
+                </svg>
+                <div class="mini-node core">
+                  <span class="node-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4M12 12.2V21"/></svg></span>
+                  <span class="node-copy"><strong>ARC V2 Core</strong><small>Boot · Operating foundation</small></span>
+                </div>
+                <div class="mini-node pulse">
+                  <span class="node-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h4l2.5-6 4.2 12 2.4-6H21"/></svg></span>
+                  <span class="node-copy"><strong>Pulse</strong><small>Supervision</small></span>
+                </div>
+                <div class="mini-node forge">
+                  <span class="node-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m14 6 4-3 4 4-3 4-5 1-4 4-2-2 4-4 2-4Z"/><path d="m5 14-2 2 5 5 2-2M14 6l4 4"/></svg></span>
+                  <span class="node-copy"><strong>Forge</strong><small>Installation</small></span>
+                </div>
+                <div class="mini-node runner">
+                  <span class="node-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 12h5M8 15h7"/></svg></span>
+                  <span class="node-copy"><strong>Service Runner</strong><small>Common execution contract</small></span>
+                </div>
+                <div class="mini-node services">
+                  <span class="node-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="9" y="14" width="6" height="6" rx="1"/><path d="M10 7h4M7 10v2a2 2 0 0 0 2 2M17 10v2a2 2 0 0 1-2 2"/></svg></span>
+                  <span class="node-copy"><strong>Services</strong><small>Installed capabilities</small></span>
+                </div>
+                <div class="mini-node inference">
+                  <span class="node-symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg></span>
+                  <span class="node-copy"><strong>Inference</strong><small>Model capability layer</small></span>
+                </div>
+              </div>
+              <div class="topology-foot">
+                <div class="legend"><span><b></b> Core / service control</span><span><b class="legend-cyan"></b> Inference path</span></div>
+                <span class="not-live">Conceptual diagram · Not live telemetry</span>
+              </div>
+            </div>
+          </div> -->
+        </div>
+      </section>
+
+      <div class="credo-line">
+        <div class="wrap credo-grid">
+          <div class="credo-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18"/></svg><span>Local-first by design</span></div>
+          <div class="credo-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M10.5 7H14a2 2 0 0 1 2 2v4.5"/></svg><span>Independent services</span></div>
+          <div class="credo-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 5h5v5H5zM14 14h5v5h-5z"/><path d="M10 7.5h3a2 2 0 0 1 2 2v4.5"/></svg><span>Explicit responsibilities</span></div>
+          <div class="credo-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16v10H4zM8 4v3M16 4v3M8 17v3M16 17v3"/><path d="M8 11h8M8 14h5"/></svg><span>Linux-native foundation</span></div>
+        </div>
+      </div>
+
+      <section class="section" id="about">
+        <div class="wrap intro-grid">
+          <div class="reveal">
+            <div class="eyebrow">The idea behind ARC</div>
+            <h2 class="intro-title">More than a model interface. A system built around it.</h2>
+          </div>
+          <div class="intro-copy reveal delay-1">
+            <p>ARC V2's core is the system layer around local AI. It separates installation, supervision and process execution so services can be developed, installed and maintained independently instead of coupling every capability into one monolithic runtime.</p>
+            <p>The goal is graceful failure. If one service crashes, supervision and restart policies should help contain the failure so the rest of the environment can continue where possible. This is a design objective, not a guarantee that the current development build can never go down.</p>
+            <a class="inline-link" href="https://github.com/ARC-V2-AI" target="_blank" rel="noreferrer">Explore the organization on GitHub <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12h14M13 5l7 7-7 7"/></svg></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section vision-section" id="vision">
+        <div class="wrap">
+          <div class="section-top reveal">
+            <div><div class="eyebrow">What ARC is for</div><h2>A useful local assistant, not a cloud-model replacement.</h2></div>
+            <p>The focus is the system around the model: persistent services, useful tools, controlled execution and access when you're away.</p>
+          </div>
+          <div class="vision-grid">
+            <article class="vision-statement reveal">
+              <div class="eyebrow">A different goal</div>
+              <h3>Turn a local model into an always-on helper.</h3>
+              <p>Local models often cannot match the strongest cloud models in broad reasoning. ARC V2 is not trying to claim otherwise or replace cloud AI. It is exploring a different kind of assistant: an optional, extensible server-side helper that stays available between your sessions.</p>
+              <p>That helper could manage files, assist with lightweight coding, research topics and respond through Telegram while you're away — with a local-first design that aims to keep your data under your control.</p>
+            </article>
+            <div class="vision-points">
+              <article class="vision-point"><span class="vision-point-index">01</span><div><h3>More than a chat window</h3><p>The system around the model is designed to make tools and services available beyond a single conversation.</p></div></article>
+              <article class="vision-point"><span class="vision-point-index">02</span><div><h3>Failure-aware by design</h3><p>Core supervises separate services so one failing process need not take the whole environment down.</p></div></article>
+              <article class="vision-point"><span class="vision-point-index">03</span><div><h3>Extendable and user-controlled</h3><p>Capabilities can be added as services, while execution boundaries and permissions remain important parts of the design.</p></div></article>
+            </div>
+          </div>
+          <div class="planned-heading"><h3>Planned building blocks</h3><p>These are future directions, not features available today.</p></div>
+          <div class="planned-grid">
+            <article class="layer-card planned-card reveal">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/><path d="m15 16 2 2 4-5"/></svg></span>
+              <h3>Full-system installer</h3><p>A guided installation flow is planned to bring the complete agent setup together instead of requiring each service to be installed by hand.</p>
+              <div class="layer-footer"><span class="pill planned-pill">Planned</span></div>
+            </article>
+            <article class="layer-card planned-card reveal delay-1">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M8 10h8M8 14h5M17 4v4M15 6h4"/></svg></span>
+              <h3>Main agent service</h3><p>A central service is planned to connect inference, memory and tools and enable the main assistant behaviour.</p>
+              <div class="layer-footer"><span class="pill planned-pill">Planned</span></div>
+            </article>
+            <article class="layer-card planned-card reveal delay-2">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/><path d="M3 7v10M21 7v10"/></svg></span>
+              <h3>Dedicated memory service</h3><p>A separate memory system is planned to store and retrieve useful context beyond a single model session.</p>
+              <div class="layer-footer"><span class="pill planned-pill">Planned</span></div>
+            </article>
+            <article class="layer-card planned-card reveal delay-3">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H7l-3 2v-5.2A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h8M8 14h5"/></svg></span>
+              <h3>Telegram service</h3><p>A dedicated access service is planned so the assistant can receive requests and provide updates while you're away.</p>
+              <div class="layer-footer"><span class="pill planned-pill">Planned</span></div>
+            </article>
+          </div>
+          <p class="safety-note"><strong>Local-first does not automatically mean risk-free.</strong> Model-driven file or online actions still need explicit permissions, constrained process execution and careful handling of untrusted content. Those safeguards matter even when inference runs locally.</p>
+        </div>
+      </section>
+
+      <section class="section architecture-section" id="architecture">
+        <div class="wrap">
+          <div class="section-top reveal">
+            <div><div class="eyebrow">A system with clear boundaries</div><h2>Each layer has a job.<br>Each service has a contract.</h2></div>
+            <p>Choose a component to see what it is responsible for. The connections show the conceptual relationships described in the public Core architecture.</p>
+          </div>
+          <div class="architecture-card reveal delay-1">
+            <div class="architecture-toolbar">
+              <div class="toolbar-left"><span class="toolbar-mark"></span> ARC V2 / Component map</div>
+              <span class="toolbar-note">Select any node to inspect its role</span>
+            </div>
+            <div class="arch-content">
+              <div class="arch-canvas">
+                <svg class="arch-svg" viewBox="0 0 660 420" role="group" aria-label="Interactive ARC V2 architecture diagram">
+                  <defs>
+                    <marker id="edgeArrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#5e85b3"/></marker>
+                  </defs>
+                  <path class="arch-edge active" data-edge="core pulse" marker-end="url(#edgeArrow)" d="M280 78 C250 96 190 105 154 128"/>
+                  <path class="arch-edge" data-edge="core forge" marker-end="url(#edgeArrow)" d="M380 78 C410 96 470 105 506 128"/>
+                  <path class="arch-edge" data-edge="pulse runner" marker-end="url(#edgeArrow)" d="M180 180 C196 208 242 219 285 236"/>
+                  <path class="arch-edge" data-edge="forge services" marker-end="url(#edgeArrow)" d="M500 180 C500 230 480 286 460 337"/>
+                  <path class="arch-edge" data-edge="runner services" marker-end="url(#edgeArrow)" d="M330 286 V337"/>
+                  <circle cx="330" cy="315" r="2.2" fill="#a7c9ff"><animate attributeName="opacity" values="1;.2;1" dur="3.2s" repeatCount="indefinite"/></circle>
+
+                  <g class="arch-node selected" data-node="core" role="button" tabindex="0" aria-label="ARC V2 Core">
+                    <rect x="245" y="26" width="170" height="52" rx="8"/>
+                    <text class="node-index" x="258" y="42">SYSTEM / 00</text><text class="node-title" x="258" y="59">ARC V2 Core</text><circle class="node-indicator" cx="400" cy="44" r="3"/>
+                  </g>
+                  <g class="arch-node" data-node="pulse" role="button" tabindex="0" aria-label="Pulse">
+                    <rect x="72" y="128" width="164" height="52" rx="8"/>
+                    <text class="node-index" x="85" y="144">CONTROL / 01</text><text class="node-title" x="85" y="161">Pulse</text><text class="node-subtitle" x="85" y="173">Supervision</text>
+                  </g>
+                  <g class="arch-node" data-node="forge" role="button" tabindex="0" aria-label="Forge">
+                    <rect x="424" y="128" width="164" height="52" rx="8"/>
+                    <text class="node-index" x="437" y="144">INSTALL / 02</text><text class="node-title" x="437" y="161">Forge</text><text class="node-subtitle" x="437" y="173">Installation management</text>
+                  </g>
+                  <g class="arch-node" data-node="runner" role="button" tabindex="0" aria-label="Service Runner">
+                    <rect x="245" y="236" width="170" height="50" rx="8"/>
+                    <text class="node-index" x="258" y="252">EXECUTION / 03</text><text class="node-title" x="258" y="269">Service Runner</text><circle cx="400" cy="254" r="3" fill="#9dc4ff"/>
+                  </g>
+                  <g class="arch-node" data-node="services" role="button" tabindex="0" aria-label="Installed services">
+                    <rect x="135" y="337" width="390" height="63" rx="8"/>
+                    <text class="node-index" x="153" y="352">SERVICES / 04</text><text class="node-title" x="153" y="371">Installed services</text><text class="node-subtitle" x="153" y="386">Inference runtime · other independent services</text>
+                  </g>
+                </svg>
+                <div class="mobile-architecture" aria-label="Architecture components">
+                  <button class="mobile-arch-node selected" data-node="core"><span><strong>ARC V2 Core</strong><small>System foundation</small></span></button>
+                  <div class="mobile-arrow">↙ &nbsp; controls &nbsp; ↘</div>
+                  <button class="mobile-arch-node" data-node="pulse"><span><strong>Pulse</strong><small>Supervision · health · lifecycle</small></span></button>
+                  <button class="mobile-arch-node" data-node="forge"><span><strong>Forge</strong><small>Installation · component state</small></span></button>
+                  <div class="mobile-arrow">↓ &nbsp; starts through &nbsp; ↓</div>
+                  <button class="mobile-arch-node" data-node="runner"><span><strong>Service Runner</strong><small>Service execution contract</small></span></button>
+                  <div class="mobile-arrow">↓ &nbsp; loads &nbsp; ↓</div>
+                  <button class="mobile-arch-node" data-node="services"><span><strong>Installed services</strong><small>Includes the inference runtime and other independently installed services</small></span></button>
+                </div>
+              </div>
+              <aside class="arch-detail" aria-live="polite" aria-atomic="true">
+                <div class="detail-index" id="detail-index">Component / 00</div>
+                <h3 id="detail-title">ARC V2 Core</h3>
+                <p id="detail-description">The foundational system layer. Core initializes ARC, coordinates boot, and provides the architecture that separates installation, supervision and execution.</p>
+                <div class="detail-rule"></div>
+                <div class="detail-meta">Responsibility</div>
+                <div class="detail-contract" id="detail-contract">Starts the system and connects the service lifecycle to a persistent Linux environment.</div>
+                <div class="detail-foot"><span class="selected-state"><i></i> Selected component</span><span id="detail-kind">System layer</span></div>
+              </aside>
+            </div>
+            <div class="arch-caption"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Conceptual architecture, not live telemetry. Core separates the operating responsibilities: Pulse supervises running services, Forge manages installed components, and Service Runner executes a service. Inference belongs with installed services, not as a separate core layer.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="components">
+        <div class="wrap">
+          <div class="section-top reveal">
+            <div><div class="eyebrow">The building blocks</div><h2>Separate projects.<br>A coherent system.</h2></div>
+            <p>ARC V2 is made from focused components with distinct responsibilities. Explore the current repositories and service-development guide.</p>
+          </div>
+          <div class="layer-grid">
+            <a class="layer-card reveal" href="https://github.com/ARC-V2-AI/ARC-V2-Core" target="_blank" rel="noreferrer">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.8 7.5 4.4 7.5-4.4M12 12.2V21"/></svg></span>
+              <h3>ARC V2 Core</h3><p>The operating foundation: boot, service lifecycle management, dependencies and supervision through clearly separated components.</p>
+              <div class="layer-footer"><span class="pill">Active development</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div>
+            </a>
+            <a class="layer-card reveal delay-1" href="https://github.com/ARC-V2-AI/service-runner" target="_blank" rel="noreferrer">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 12h5M8 15h7"/></svg></span>
+              <h3>Service Runner</h3><p>The common service contract and process runner used to load services, provide runtime context and report readiness and health.</p>
+              <div class="layer-footer"><span class="pill muted-pill">Execution layer</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div>
+            </a>
+            <div class="layer-card inference-card reveal delay-2">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg></span>
+              <h3>Inference Runtime</h3><p>The model execution service in the ARC architecture. It is one service within the wider environment, alongside other independently installed capabilities.</p>
+              <div class="layer-footer"><span class="pill muted-pill">Runtime component</span><span class="micro" style="color:#7f9eae;font-size:9px">In development</span></div>
+            </div>
+            <a class="layer-card reveal delay-1" href="https://github.com/ARC-V2-AI/ARC-V2-Util" target="_blank" rel="noreferrer">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m14 6 4-3 4 4-3 4-5 1-4 4-2-2 4-4 2-4Z"/><path d="m5 14-2 2 5 5 2-2"/></svg></span>
+              <h3>ARC-V2-Util</h3><p>Shared Python utilities and lightweight building blocks intended to reduce duplicated implementation across the ARC ecosystem.</p>
+              <div class="layer-footer"><span class="pill muted-pill">Reusable utilities</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div>
+            </a>
+            <a class="layer-card reveal delay-2" href="https://github.com/ARC-V2-AI/.github/blob/main/docs/BUILDING-A-SERVICE.md" target="_blank" rel="noreferrer">
+              <span class="layer-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v5h4M9 13h6M9 16.5h6"/></svg></span>
+              <h3>Build a service</h3><p>Guidance for creating, packaging and installing an independently installable ARC V2 service.</p>
+              <div class="layer-footer"><span class="pill muted-pill">Developer guide</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12h14M13 5l7 7-7 7"/></svg></div>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section principles" id="principles">
+        <div class="wrap">
+          <div class="section-top reveal">
+            <div><div class="eyebrow">Design principles</div><h2>The architecture is the product.</h2></div>
+            <p>Four principles guide how ARC V2 is structured and where responsibilities belong.</p>
+          </div>
+          <div class="principle-grid">
+            <article class="principle reveal"><div class="principle-num mono">01 / OWNERSHIP</div><h3>Local-first</h3><p>Computation, state and services should be able to run locally and remain under the user's control.</p></article>
+            <article class="principle reveal delay-1"><div class="principle-num mono">02 / COMPOSITION</div><h3>Service-oriented</h3><p>Focused services with explicit contracts rather than one monolithic process that owns every capability.</p></article>
+            <article class="principle reveal delay-2"><div class="principle-num mono">03 / RESILIENCE</div><h3>Failure containment</h3><p>Supervised services and restart policies aim to keep an individual process failure from bringing down the entire environment.</p></article>
+            <article class="principle reveal delay-3"><div class="principle-num mono">04 / FOUNDATION</div><h3>Linux-native</h3><p>Built around Linux as the primary operating environment, using system primitives where they fit best.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="get-started">
+        <div class="wrap">
+          <div class="start-panel reveal">
+            <div class="start-grid">
+              <div>
+                <div class="eyebrow">Explore · Build · Extend</div>
+                <h2>Start with the foundation. Understand the system.</h2>
+                <p>ARC V2 is actively evolving. Start with Core to explore the current architecture and install the foundation before adding services separately.</p>
+                <div class="hero-actions" style="margin-top:25px">
+                  <a class="button button-primary" href="https://github.com/ARC-V2-AI/ARC-V2-Core" target="_blank" rel="noreferrer">Explore ARC V2 Core <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 5l7 7-7 7"/></svg></a>
+                  <a class="button button-secondary" href="https://github.com/ARC-V2-AI/.github/blob/main/docs/BUILDING-A-SERVICE.md" target="_blank" rel="noreferrer">Build a service <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 4h6v6M20 4 10 14"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg></a>
+                </div>
+              </div>
+              <div class="code-card">
+                <div class="code-top"><span><span class="code-dots"><i></i><i></i><i></i></span> quick start</span><span>shell</span></div>
+                <div class="code-body"><span class="comment"># Install the ARC V2 Core CLI</span>
+<span class="cmd">uv tool install git+https://github.com/ARC-V2-AI/ARC-V2-Core.git</span>
+
+<span class="comment"># Start ARC</span>
+<span class="cmd">arc</span></div>
+                <div style="display:flex;justify-content:flex-end;padding:0 13px 13px"><button class="copy-command" id="copy-command" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span>Copy install command</span></button></div>
+                <div class="install-note"><strong>Core only.</strong> This command installs the ARC V2 Core CLI, not a complete system agent. Services such as inference must currently be installed separately. A guided full-system installer is planned.</div>
+              </div>
+            </div>
+            <div class="start-footnote">The Core repository identifies ARC V2 as active development; command availability and implementation details may evolve.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-main">
+        <div class="brand footer-brand"><span class="brand-name">ARC V2</span><span>Building the systems around local AI.</span></div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a href="https://github.com/ARC-V2-AI" target="_blank" rel="noreferrer">Organization ↗</a>
+          <a href="https://github.com/ARC-V2-AI/ARC-V2-Core" target="_blank" rel="noreferrer">Core ↗</a>
+          <a href="https://github.com/ARC-V2-AI/service-runner" target="_blank" rel="noreferrer">Service Runner ↗</a>
+          <a href="https://github.com/ARC-V2-AI/ARC-V2-Util" target="_blank" rel="noreferrer">Util ↗</a>
+        </nav>
+      </div>
+      <div class="wrap footer-bottom"><span>ARC V2 · System architecture for local AI</span><span class="dev-warning">Under active development</span></div>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      const componentData = {
+        core: {
+          index: 'Component / 00', title: 'ARC V2 Core', kind: 'System layer',
+          description: 'The foundational system layer. Core initializes ARC and provides the architecture that separates installation, supervision and execution.',
+          contract: 'Provides the operating foundation so service installation, supervision and process execution can remain separate responsibilities.'
+        },
+        pulse: {
+          index: 'Control / 01', title: 'Pulse', kind: 'Supervisor',
+          description: 'Pulse is responsible for the lifecycle of running services. It coordinates startup order, dependencies, readiness, health checks, restart policy and shutdown.',
+          contract: 'Controls what is running, without needing to know how each service is implemented internally.'
+        },
+        forge: {
+          index: 'Install / 02', title: 'Forge', kind: 'Component manager',
+          description: 'Forge manages the installed state of ARC components and services, including their sources, package installation, runtime environment and metadata.',
+          contract: 'Answers what is installed, where it came from and which version is registered. Forge does not supervise running services.'
+        },
+        runner: {
+          index: 'Execution / 03', title: 'Service Runner', kind: 'Execution contract',
+          description: 'The runner provides a shared execution contract for an individual ARC service: loading its implementation, constructing context and communicating lifecycle status.',
+          contract: 'Executes a service process; Pulse remains responsible for supervision and lifecycle decisions.'
+        },
+        services: {
+          index: 'Services / 04', title: 'Installed services', kind: 'Independent components',
+          description: 'Services provide focused capabilities and are installed independently. The inference runtime is one example of a service within this layer, rather than a separate Core component.',
+          contract: 'Compose applications from separate services instead of coupling every capability into Core. Today, service installation is separate from installing Core.'
+        }
+      };
+      const nodes = Array.from(document.querySelectorAll('[data-node]'));
+      const edges = Array.from(document.querySelectorAll('[data-edge]'));
+      const detailIndex = document.getElementById('detail-index');
+      const detailTitle = document.getElementById('detail-title');
+      const detailDescription = document.getElementById('detail-description');
+      const detailContract = document.getElementById('detail-contract');
+      const detailKind = document.getElementById('detail-kind');
+
+      function selectNode(id) {
+        const data = componentData[id];
+        if (!data) return;
+        nodes.forEach(node => {
+          const selected = node.dataset.node === id;
+          node.classList.toggle('selected', selected);
+          if (node.hasAttribute('aria-label')) node.setAttribute('aria-pressed', String(selected));
+        });
+        detailIndex.textContent = data.index;
+        detailTitle.textContent = data.title;
+        detailDescription.textContent = data.description;
+        detailContract.textContent = data.contract;
+        detailKind.textContent = data.kind;
+        edges.forEach(edge => {
+          const parts = edge.dataset.edge.split(' ');
+          edge.classList.toggle('active', parts.includes(id));
+        });
+      }
+
+      nodes.forEach(node => {
+        node.addEventListener('click', () => selectNode(node.dataset.node));
+        if (node.tagName.toLowerCase() === 'g') {
+          node.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              selectNode(node.dataset.node);
+            }
+          });
+        }
+      });
+
+      const toggle = document.getElementById('menu-toggle');
+      const nav = document.getElementById('primary-nav');
+      toggle.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+      });
+      nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+        nav.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'Open navigation');
+      }));
+
+      const revealItems = document.querySelectorAll('.reveal');
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -30px 0px' });
+        revealItems.forEach(item => observer.observe(item));
+      } else {
+        revealItems.forEach(item => item.classList.add('in-view'));
+      }
+
+      const copyButton = document.getElementById('copy-command');
+      const command = 'uv tool install git+https://github.com/ARC-V2-AI/ARC-V2-Core.git';
+      copyButton.addEventListener('click', async () => {
+        const label = copyButton.querySelector('span');
+        try {
+          await navigator.clipboard.writeText(command);
+          label.textContent = 'Copied';
+          window.setTimeout(() => label.textContent = 'Copy install command', 1600);
+        } catch {
+          label.textContent = 'Select command above';
+          window.setTimeout(() => label.textContent = 'Copy install command', 1800);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
